@@ -1,0 +1,43 @@
+# Consultant Pulse bundle.
+# See https://docs.databricks.com/dev-tools/bundles/index.html
+bundle:
+  name: consultant_pulse
+  uuid: 38e0cd49-49ac-4d73-96a6-6a6ffdfbb3c9
+
+include:
+  - infra/*.yml
+
+experimental:
+  skip_name_prefix_for_schema: true
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for Consultant Pulse
+  schema:
+    description: Unity Catalog schema for Consultant Pulse
+  warehouse_id:
+    description: SQL warehouse used by future dashboards and SQL tasks
+    lookup:
+      warehouse: Serverless Starter Warehouse
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-c43489fd-406c.cloud.databricks.com
+    variables:
+      catalog: workspace
+      schema: ${workspace.current_user.short_name}
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-c43489fd-406c.cloud.databricks.com
+      root_path: /Workspace/Users/michael.woodward@koantek.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      schema: consultant_pulse
+    permissions:
+      - user_name: michael.woodward@koantek.com
+        level: CAN_MANAGE

@@ -1,0 +1,40 @@
+name: Deploy dev
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Validate and deploy dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+
+      - name: Test
+        run: |
+          uv sync --dev
+          uv run ruff check .
+          uv run pytest
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Validate and deploy
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          test -n "$DATABRICKS_HOST" || { echo "Set repository secret DATABRICKS_HOST"; exit 1; }
+          test -n "$DATABRICKS_CLIENT_ID" || { echo "Set repository secret DATABRICKS_CLIENT_ID"; exit 1; }
+          test -n "$DATABRICKS_CLIENT_SECRET" || { echo "Set repository secret DATABRICKS_CLIENT_SECRET"; exit 1; }
+          databricks bundle validate --strict --target dev
+          databricks bundle deploy --target dev

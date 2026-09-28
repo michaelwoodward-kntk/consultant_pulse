@@ -1,0 +1,8 @@
+resources:
+  volumes:
+    feedback_raw:
+      catalog_name: ${var.catalog}
+      schema_name: ${var.schema}
+      name: feedback_raw
+      volume_type: MANAGED
+      comment: Landing zone for raw TPM / consultant feedback files

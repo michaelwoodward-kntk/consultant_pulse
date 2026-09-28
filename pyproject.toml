@@ -1,0 +1,31 @@
+[project]
+name = "consultant_pulse"
+version = "0.0.1"
+authors = [{ name = "michael.woodward@koantek.com" }]
+requires-python = ">=3.11"
+dependencies = [
+    "databricks-sdk>=0.55.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[project.scripts]
+consultant-pulse = "consultant_pulse.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["src/notebooks"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

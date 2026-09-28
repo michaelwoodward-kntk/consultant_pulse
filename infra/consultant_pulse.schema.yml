@@ -1,0 +1,6 @@
+resources:
+  schemas:
+    consultant_pulse:
+      name: ${var.schema}
+      catalog_name: ${var.catalog}
+      comment: Consultant Pulse tables and volumes
