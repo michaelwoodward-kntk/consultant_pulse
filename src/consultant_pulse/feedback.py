@@ -1,9 +1,13 @@
-"""TPM submission of project feedback.
+"""TPM submission of project feedback, and a manager's view of it.
 
 A TPM identifies the project and the consultant, writes the feedback, and
 submits it. The record is stamped in UTC and kept with that project and
 consultant. Submitted feedback stays as written unless the active workflow
 permits an edit.
+
+A manager can view the documented observations for one consultant: how many
+there are, which projects and TPMs they come from, and when the latest one
+was submitted. Counts are observation counts, not performance scores.
 """
 
 from __future__ import annotations
@@ -41,6 +45,53 @@ class SubmittedFeedback:
     updated_at: datetime
     submitted_by_name: str
     submitted_by_email: str
+
+
+@dataclass(frozen=True)
+class TpmContributor:
+    """A TPM who submitted at least one observation for the consultant."""
+
+    name: str
+    email: str
+
+
+@dataclass(frozen=True)
+class ProjectFeedbackGroup:
+    """Documented observations for one project, oldest submission first."""
+
+    project_id: str
+    observations: tuple[SubmittedFeedback, ...]
+
+    @property
+    def observation_count(self) -> int:
+        return len(self.observations)
+
+
+@dataclass(frozen=True)
+class ConsultantFeedbackAggregate:
+    """Documented observations for one consultant.
+
+    ``observation_count`` is the number of submitted records. It is not a
+    performance score.
+    """
+
+    consultant_id: str
+    observations: tuple[SubmittedFeedback, ...]
+    by_project: tuple[ProjectFeedbackGroup, ...]
+    tpms: tuple[TpmContributor, ...]
+    last_submitted_at: datetime | None
+
+    @property
+    def observation_count(self) -> int:
+        return len(self.observations)
+
+    @property
+    def project_count(self) -> int:
+        return len(self.by_project)
+
+    @property
+    def tpm_count(self) -> int:
+        return len(self.tpms)
 
 
 @dataclass(frozen=True)
@@ -98,6 +149,9 @@ class FeedbackStore:
             for record in self._records.values()
             if record.project_id == project_id and record.consultant_id == consultant_id
         )
+
+    def for_consultant(self, consultant_id: str) -> tuple[SubmittedFeedback, ...]:
+        return tuple(record for record in self._records.values() if record.consultant_id == consultant_id)
 
 
 class FeedbackService:
@@ -164,6 +218,44 @@ class FeedbackService:
             submitted_by_email=current.submitted_by_email,
         )
         return self.store.replace(updated, self.workflow)
+
+    def aggregate_for_consultant(self, consultant_id: str) -> ConsultantFeedbackAggregate:
+        """Summarize documented observations for one consultant.
+
+        Observations are oldest first. Project groups follow project id.
+        TPM contributors follow the first time each email appears.
+        """
+        consultant_id = _require_text(
+            consultant_id, "Identify the consultant before viewing feedback."
+        )
+        observations = tuple(
+            sorted(
+                self.store.for_consultant(consultant_id),
+                key=lambda record: (record.submitted_at, record.feedback_id),
+            )
+        )
+        grouped: dict[str, list[SubmittedFeedback]] = {}
+        for record in observations:
+            grouped.setdefault(record.project_id, []).append(record)
+        by_project = tuple(
+            ProjectFeedbackGroup(project_id=project_id, observations=tuple(items))
+            for project_id, items in sorted(grouped.items())
+        )
+        tpms: list[TpmContributor] = []
+        seen_emails: set[str] = set()
+        for record in observations:
+            if record.submitted_by_email in seen_emails:
+                continue
+            seen_emails.add(record.submitted_by_email)
+            tpms.append(TpmContributor(name=record.submitted_by_name, email=record.submitted_by_email))
+        last_submitted_at = observations[-1].submitted_at if observations else None
+        return ConsultantFeedbackAggregate(
+            consultant_id=consultant_id,
+            observations=observations,
+            by_project=by_project,
+            tpms=tuple(tpms),
+            last_submitted_at=last_submitted_at,
+        )
 
 
 def _require_text(value: str, message: str) -> str:
