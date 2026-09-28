@@ -1,5 +1,7 @@
 # Consultant Pulse
 
+Databricks app to track feedback on individual consultants and provide evidence-based information for business and performance reviews.
+
 Declarative Automation Bundle for TPM / consultant feedback on Databricks.
 
 ## Layout
