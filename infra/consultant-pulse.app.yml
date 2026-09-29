@@ -1,0 +1,9 @@
+resources:
+  apps:
+    consultant_pulse_app:
+      name: consultant-pulse
+      description: Consultant Pulse — capture project feedback while it is fresh
+      source_code_path: ..
+      space: app-lab
+      lifecycle:
+        started: true
